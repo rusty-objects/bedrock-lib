@@ -1,0 +1,51 @@
+[package]
+name = "gensh"
+version = "0.1.0"
+edition = "2021"
+
+# https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html
+# https://doc.rust-lang.org/cargo/reference/features.html
+[dependencies]
+shellfish = { version = "0.10.1", features = ["app", "async", "clap"] }
+# TODO - look up how to specify tokio with shellfish
+# async-std = { version = "1.13.0", features = ["attributes"] }
+rustyline = "15.0.0"
+
+# https://docs.rs/clap/latest/clap/index.html#modules
+#
+# Clap 4.x doesn't work because shellfish's macro depends on a trait function
+# that was deprecated in 3.x, CommandFactory::into_app:
+#
+# https://docs.rs/clap/3.2.16/clap/trait.CommandFactory.html
+#
+# So you get an error like:
+#
+# error[E0576]: cannot find method or associated constant `into_app` in trait `clap::CommandFactory`
+#   --> src/cli/gen/main.rs:44:26
+#    |
+# 44 |         .insert("greet", clap_command!((), GreetArgs, greet));
+#    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in `clap::CommandFactory`
+#    |
+#    = note: this error originates in the macro `clap_command` (in Nightly builds, run with -Z macro-backtrace for more info)
+# 
+# TODO: look at doing a pull request for shellfish
+#
+# clap = { version = "4.5.26", features = ["derive", "cargo"] }
+clap = { version = "3.2.16", features = ["derive", "cargo"] }
+aws-sdk-bedrockruntime = "1.67.0"
+aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.135"
+tokio = { version = "1", features = ["full"] }
+
+[lib]
+name = "genlib"
+path = "src/lib/mod.rs"
+
+[[bin]]
+name = "ask"
+path = "src/cli/invoke/main.rs"
+
+[[bin]]
+name = "converse"
+path = "src/cli/converse/main.rs"
