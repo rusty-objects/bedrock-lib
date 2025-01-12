@@ -35,7 +35,6 @@ error[E0576]: cannot find method or associated constant `into_app` in trait `cla
 
 ## TODO
 * amzn: support image and video input
-* amzn: support image and video output
 * amzn: plumb inference parameters
 * amzn: converse
 * amzn: RetrieveAndGenerate (is this possible with Converse?)
