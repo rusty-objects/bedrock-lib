@@ -1,6 +1,12 @@
 # gensh
 interactive shell for gen ai models
 
+## Implementations
+
+* ask - invokes Amazon Nova models.  This is a one shot request/respose using InvokeModel under the hood.
+InvokeModel does not have a unified API across models (takes a Blob `body` input, which is a model specific
+json document).  Because of that, ask doesn't generalize.
+
 ## Setup
 
 To use, you need to have access to an AWS account so you can interact with Amazon Bedrock.  Additionally,

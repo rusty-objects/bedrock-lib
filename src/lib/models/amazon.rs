@@ -1,3 +1,5 @@
+//! Specific implementation of invoke for Amazon Nova models
+//!
 //! See:
 //! - https://docs.aws.amazon.com/nova/latest/userguide/invoke.html
 //! - https://docs.aws.amazon.com/nova/latest/userguide/complete-request-schema.html
