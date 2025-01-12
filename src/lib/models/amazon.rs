@@ -154,16 +154,36 @@ pub enum Content {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Image {
     format: String,
-    source: EncodedBytes,
+    source: ImageSource,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EncodedBytes {
+pub struct ImageSource {
+    // TODO unclear how this needs to look for the "binary array" required
+    // for converse, which doesn't take the base64 that InvokeModel takes
     bytes: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Video;
+pub struct Video {
+    format: String,
+    source: VideoSource,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum VideoSource {
+    #[serde(rename = "s3Location")]
+    S3Location(S3Location),
+    #[serde(rename = "bytes")]
+    Bytes(String),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct S3Location {
+    uri: String,
+    // #[serde(rename = "bucketOwner")]
+    // bucket_owner: String, // optional, for cross-account requests
+}
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct InferenceConfig {
@@ -264,17 +284,40 @@ impl From<NovaLiteArgs> for NovaBedrock {
         // User content of the message.
         // Required and must occur first.
         //
-        // User content may contain several elements.
+        // User content may contain several elements,
+        // including multi-modal elements
         // --------------
         let mut user_content = vec![];
+
+        // push text
         user_content.push(Content::Text(value.user));
 
+        // push images from localhost
         for image in value.image {
             let format = crate::file::get_extension_from_filename(&image);
             let base64 = crate::file::read_base64(&image);
             user_content.push(Content::Image(Image {
                 format,
-                source: EncodedBytes { bytes: base64 },
+                source: ImageSource { bytes: base64 },
+            }));
+        }
+
+        // push videos from localhost
+        for video in value.video {
+            let format = crate::file::get_extension_from_filename(&video);
+            let base64 = crate::file::read_base64(&video);
+            user_content.push(Content::Video(Video {
+                format,
+                source: VideoSource::Bytes(base64),
+            }));
+        }
+
+        // push videos from s3
+        for uri in value.uri_video {
+            let format = crate::file::get_extension_from_filename(&uri);
+            user_content.push(Content::Video(Video {
+                format,
+                source: VideoSource::S3Location(S3Location { uri }),
             }));
         }
 
@@ -382,4 +425,26 @@ fn conversion() {
         Content::Text(c) => assert_eq!(c, &user),
         _ => panic!("bad content"),
     }
+}
+
+#[test]
+fn video_encoding() {
+    let video1 = Video {
+        format: "abc".to_owned(),
+        source: VideoSource::Bytes("123".to_owned()),
+    };
+
+    println!(
+        "bytes\n{}\n",
+        serde_json::to_string_pretty(&video1).unwrap()
+    );
+
+    let video2 = Video {
+        format: "abc".to_owned(),
+        source: VideoSource::S3Location(S3Location {
+            uri: "s3uri".to_owned(),
+        }),
+    };
+
+    println!("s3\n{}", serde_json::to_string_pretty(&video2).unwrap());
 }
