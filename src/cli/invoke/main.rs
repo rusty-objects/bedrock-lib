@@ -139,7 +139,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("{}\n", body_string);
             }
 
-            let (pretty, locations) = bedrock_serde.render_response(body_string);
+            let (pretty, locations) =
+                bedrock_serde.render_response(body_string, "/tmp/".to_string());
             println!("{}", pretty);
 
             for location in locations {

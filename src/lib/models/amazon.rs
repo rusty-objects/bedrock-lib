@@ -1,6 +1,18 @@
 //! See:
 //! - https://docs.aws.amazon.com/nova/latest/userguide/invoke.html
 //! - https://docs.aws.amazon.com/nova/latest/userguide/complete-request-schema.html
+//!
+//! For requests, this module takes user input (via rust structs encoded by clap), and converts
+//! them to model-specific json inference configuration.  For multi-media inputs, this module reads
+//! and encodes the data from disk appropriately.
+//!
+//! For responses, this module reads the json inference response from the model, writes any media to disk
+//! and redners the output.
+//!
+//! The field names of these structs match the Amazon Nova documentation.
+//!
+//! Note: this module doens't interact with Bedrock and isn't aware of bedrock APIs.  It's encoding the body
+//! portion of bedrock requests only.
 
 use clap::Args;
 // ----- JSON Considerations -----
@@ -49,6 +61,37 @@ pub struct NovaLiteArgs {
     /// If provided, then when this model is invoked this prompt will be sent to the model for itt o use to start off its answer.
     #[clap(short, long)]
     assistant: Option<String>,
+
+    /// Paths for image content to send
+    ///
+    /// This tool won't validate the files are supported.  Not all models support
+    /// all modalities.
+    ///
+    /// See: https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
+    #[clap(short, long)]
+    image: Vec<String>,
+
+    /// Paths for video content to send
+    ///
+    /// This tool won't validate the files are supported.  Not all models support
+    /// all modalities.
+    ///
+    /// See: https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
+    #[clap(short, long)]
+    video: Vec<String>,
+
+    /// S3 Uri for video content to send to the model.  
+    ///
+    /// This tool won't validate the files are supported.  Not all models support
+    /// all modalities.
+    ///
+    /// See: https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
+    ///
+    /// Note: Amazon Nova supports cross-account S3 access but this tool does not.
+    /// That would require modifying the tool to accept the bucket owner account id
+    /// in the model invocation.
+    #[clap(short, long)]
+    uri_video: Vec<String>,
 
     /// User prompt.
     ///
@@ -109,7 +152,15 @@ pub enum Content {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Image;
+pub struct Image {
+    format: String,
+    source: EncodedBytes,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EncodedBytes {
+    bytes: String,
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Video;
@@ -197,12 +248,38 @@ pub struct Usage {
 pub struct NovaBedrock(&'static str, Request);
 impl From<NovaLiteArgs> for NovaBedrock {
     fn from(value: NovaLiteArgs) -> Self {
+        // ==============
+        // The messages
+        // ==============
         let mut messages = vec![];
+
+        // --------------
+        // User content of the message.
+        // Required and must occur first.
+        //
+        // User content may contain several elements.
+        // --------------
+        let mut user_content = vec![];
+        user_content.push(Content::Text(value.user));
+
+        for image in value.image {
+            let format = crate::file::get_extension_from_filename(&image);
+            let base64 = crate::file::read_base64(&image);
+            user_content.push(Content::Image(Image {
+                format,
+                source: EncodedBytes { bytes: base64 },
+            }));
+        }
+
         messages.push(Message {
             role: Role::User,
-            content: vec![Content::Text(value.user)],
+            content: user_content,
         });
 
+        // --------------
+        // The assistant (prefill) content of the message.
+        // Optional and must occur last.
+        // --------------
         if let Some(prefill) = value.assistant {
             messages.push(Message {
                 role: Role::Assistant,
@@ -210,12 +287,18 @@ impl From<NovaLiteArgs> for NovaBedrock {
             });
         }
 
+        // ===============
+        // The system prompt
+        // ===============
         let mut system = vec![];
         if let Some(prompt) = value.system {
             system.push(SystemPrompt { text: prompt });
         }
 
+        // ===============
+        // Inference configuration
         // TODO allow this to be configured, maybe
+        // ===============
         let inference_config: InferenceConfig = Default::default();
 
         let request = Request {
@@ -241,7 +324,11 @@ impl BedrockSerde for NovaBedrock {
         serde_json::to_string(&self.1).unwrap()
     }
 
-    fn render_response(&self, body: String) -> (String, Vec<DownloadLocation>) {
+    fn render_response(
+        &self,
+        body: String,
+        _base_write_path: String,
+    ) -> (String, Vec<DownloadLocation>) {
         let rsp: Response = serde_json::from_str(body.as_str()).unwrap_or_else(|err| {
             panic!("JSON was not well-formatted: err: {:?}, body:{}", err, body)
         });
