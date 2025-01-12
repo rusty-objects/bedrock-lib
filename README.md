@@ -35,7 +35,7 @@ error[E0576]: cannot find method or associated constant `into_app` in trait `cla
 
 ## TODO
 * ~~amzn: support image input~~
-* amzn: support video input
+* ~~amzn: support video input~~
 * amzn: plumb inference parameters
 * amzn: converse
 * amzn: support doc inputs (word, pdf)

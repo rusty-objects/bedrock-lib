@@ -15,7 +15,7 @@
 //! portion of bedrock requests only.
 
 use clap::Args;
-// ----- JSON Considerations -----
+
 // Had to do some serde field name changes in the types below to match the schema.
 //
 // https://serde.rs/field-attrs.html
@@ -24,17 +24,12 @@ use clap::Args;
 //
 // https://stackoverflow.com/questions/59167416/how-can-i-deserialize-an-enum-when-the-case-doesnt-match
 // https://stackoverflow.com/questions/53900612/how-do-i-avoid-generating-json-when-serializing-a-value-that-is-null-or-a-defaul
-// --------------------------------
-//
-// Nova Lite can oly be accessed through cross-region inference
-// https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html
-//
 use serde::{Deserialize, Serialize};
 
 use crate::{BedrockSerde, DownloadLocation};
 
 // ----------------------
-// CLAP Stuff
+// CLAP Types
 // ----------------------
 
 /// Amazon Nova Lite v1:0
@@ -100,7 +95,7 @@ pub struct NovaLiteArgs {
 }
 
 // ----------------------
-// JSON Serde
+// JSON Serde Types
 // ----------------------
 
 /// See:
@@ -199,7 +194,6 @@ pub struct InferenceConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_k: Option<u32>, // 0 or greater (default: 50)
 
-    // https://serde.rs/field-attrs.html
     #[serde(rename = "stopSequences")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub stop_sequences: Vec<String>,
@@ -263,7 +257,8 @@ pub struct Usage {
 }
 
 // -------------------
-// Conversion
+// CLAP Struct -> JSON Struct conversion
+// Bedrock Response Printer
 // -------------------
 pub struct NovaBedrock(&'static str, Request);
 #[cfg(test)]
@@ -276,23 +271,22 @@ impl NovaBedrock {
 impl From<NovaLiteArgs> for NovaBedrock {
     fn from(value: NovaLiteArgs) -> Self {
         // ==============
-        // The messages
+        // The messages to be sent
         // ==============
         let mut messages = vec![];
 
         // --------------
         // User content of the message.
-        // Required and must occur first.
+        // This is required and must be the first content in the message list.
         //
-        // User content may contain several elements,
-        // including multi-modal elements
+        // User content may contain several elements, including multi-modal.
         // --------------
         let mut user_content = vec![];
 
-        // push text
+        // add text
         user_content.push(Content::Text(value.user));
 
-        // push images from localhost
+        // add inline images
         for image in value.image {
             let format = crate::file::get_extension_from_filename(&image);
             let base64 = crate::file::read_base64(&image);
@@ -302,7 +296,7 @@ impl From<NovaLiteArgs> for NovaBedrock {
             }));
         }
 
-        // push videos from localhost
+        // add inline videos
         for video in value.video {
             let format = crate::file::get_extension_from_filename(&video);
             let base64 = crate::file::read_base64(&video);
@@ -312,7 +306,7 @@ impl From<NovaLiteArgs> for NovaBedrock {
             }));
         }
 
-        // push videos from s3
+        // add s3 videos
         for uri in value.uri_video {
             let format = crate::file::get_extension_from_filename(&uri);
             user_content.push(Content::Video(Video {
@@ -321,14 +315,17 @@ impl From<NovaLiteArgs> for NovaBedrock {
             }));
         }
 
+        // add now-complete user_content to messages
         messages.push(Message {
             role: Role::User,
             content: user_content,
         });
 
         // --------------
-        // The assistant (prefill) content of the message.
+        // The assistant content (aka "prefill") of the message.
         // Optional and must occur last.
+        //
+        // https://www.walturn.com/insights/mastering-prompt-engineering-for-claude
         // --------------
         if let Some(prefill) = value.assistant {
             messages.push(Message {
@@ -338,7 +335,9 @@ impl From<NovaLiteArgs> for NovaBedrock {
         }
 
         // ===============
-        // The system prompt
+        // The system prompt.  Optional.
+        //
+        // https://www.walturn.com/insights/mastering-prompt-engineering-for-claude
         // ===============
         let mut system = vec![];
         if let Some(prompt) = value.system {
@@ -357,8 +356,10 @@ impl From<NovaLiteArgs> for NovaBedrock {
             inference_config,
         };
 
-        // nova lite requires invocation wth an inference profile id, instead of
-        // its model-id: amazon.nova-lite-v1:0
+        // Nova Lite can only be accessed through cross-region inference
+        // https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html
+        //
+        // This requires invocation wth an inference profile id, instead of model-id (amazon.nova-lite-v1:0)
         let model_id = "us.amazon.nova-lite-v1:0";
 
         NovaBedrock(model_id, request)
