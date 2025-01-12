@@ -40,3 +40,15 @@ pub fn write_base64(filename: &str, contents: String) {
     let decoded = BASE64_STANDARD.decode(contents).unwrap();
     let _ = fs::write(Path::new(expanded.as_str()), decoded).unwrap();
 }
+
+#[test]
+fn extension() {
+    let file = "/tmp/foo.bar";
+    assert_eq!("bar", get_extension_from_filename(file));
+
+    let file = "/tmp/foo";
+    assert_eq!("", get_extension_from_filename(file));
+
+    let file = "s3://bucket/file.baz";
+    assert_eq!("baz", get_extension_from_filename(file));
+}

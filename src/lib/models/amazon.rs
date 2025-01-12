@@ -106,7 +106,7 @@ pub struct NovaLiteArgs {
 /// See:
 /// - https://docs.aws.amazon.com/nova/latest/userguide/invoke.html
 /// - https://docs.aws.amazon.com/nova/latest/userguide/complete-request-schema.html
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub system: Vec<SystemPrompt>,
@@ -125,12 +125,12 @@ pub struct Request {
 /// - https://docs.aws.amazon.com/nova/latest/userguide/invoke.html#utilizing-system-prompt
 /// - https://www.regie.ai/blog/user-prompts-vs-system-prompts
 /// - https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management-create.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SystemPrompt {
     pub text: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Message {
     pub role: Role,
     pub content: Vec<Content>,
@@ -143,7 +143,7 @@ pub enum Role {
     Assistant,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum Content {
     Text(String),
@@ -151,18 +151,18 @@ pub enum Content {
     Video(Video),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Image {
     format: String,
     source: EncodedBytes,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EncodedBytes {
     bytes: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Video;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -246,6 +246,13 @@ pub struct Usage {
 // Conversion
 // -------------------
 pub struct NovaBedrock(&'static str, Request);
+#[cfg(test)]
+impl NovaBedrock {
+    pub fn unwrap(self) -> (&'static str, Request) {
+        (self.0, self.1)
+    }
+}
+
 impl From<NovaLiteArgs> for NovaBedrock {
     fn from(value: NovaLiteArgs) -> Self {
         // ==============
@@ -355,54 +362,24 @@ impl BedrockSerde for NovaBedrock {
 }
 
 #[test]
-fn rando() {
-    let mut messages = vec![];
-    let msg1 = Message {
-        role: Role::User,
-        content: vec![
-            Content::Text("What a wonderful world".to_owned()),
-            Content::Image(Image {
-                foo1: "image1".to_owned(),
-                foo2: "image2".to_owned(),
-            }),
-            Content::Video(Video {
-                bar1: "video1".to_owned(),
-                bar2: "video2".to_owned(),
-            }),
-        ],
-    };
-    messages.push(msg1);
-
-    let request = Request {
-        system: SystemPrompt {
-            text: "hey there".to_owned(),
-        },
-        messages: messages,
-        inference_config: InferenceConfig {
-            max_new_tokens: None,
-            temperature: None,
-            top_p: Some(7.0),
-            top_k: None,
-            stop_sequences: vec![],
-        },
+fn conversion() {
+    let user = "x".to_owned();
+    let args = NovaLiteArgs {
+        system: None,
+        assistant: None,
+        image: vec![],
+        video: vec![],
+        uri_video: vec![],
+        user: user.clone(),
     };
 
-    let s = serde_json::to_string_pretty(&request).unwrap();
-    println!("Request:\n{}\n------------\n", s);
+    let (_, request) = Into::<NovaBedrock>::into(args).unwrap();
 
-    let role: Result<Role, serde_json::Error> = serde_json::from_str("\"assistant\"");
-    println!("ROLE: {:?}", role);
-
-    let role: Result<Role, serde_json::Error> = serde_json::from_str("\"user\"");
-    println!("ROLE: {:?}", role);
-
-    let cfg = InferenceConfig {
-        max_new_tokens: None,
-        temperature: None,
-        top_p: None,
-        top_k: None,
-        stop_sequences: vec![],
-    };
-    let s = serde_json::to_string(&cfg).unwrap();
-    println!("Inference Config\n{}", s);
+    assert_eq!(1, request.messages.len());
+    assert_eq!(Role::User, request.messages[0].role);
+    assert_eq!(1, request.messages[0].content.len());
+    match &(request.messages[0].content[0]) {
+        Content::Text(c) => assert_eq!(c, &user),
+        _ => panic!("bad content"),
+    }
 }
