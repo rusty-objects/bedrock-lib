@@ -16,6 +16,18 @@ pub fn get_extension_from_filename(filename: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Gets the file stem for the specified path
+///
+/// Filenames support ~ and env variables.
+pub fn get_file_stem(filename: &str) -> String {
+    let expanded = expand(filename);
+    Path::new(expanded.as_str())
+        .file_stem()
+        .and_then(OsStr::to_str)
+        .map(str::to_string)
+        .unwrap_or_default()
+}
+
 /// Expands filenames with ~ and env variables.  Does not turn
 /// relative paths into absolute.
 pub fn expand(filename: &str) -> String {
@@ -45,10 +57,17 @@ pub fn write_base64(filename: &str, contents: String) {
 fn extension() {
     let file = "/tmp/foo.bar";
     assert_eq!("bar", get_extension_from_filename(file));
+    assert_eq!("foo", get_file_stem(file));
 
     let file = "/tmp/foo";
     assert_eq!("", get_extension_from_filename(file));
+    assert_eq!("foo", get_file_stem(file));
 
     let file = "s3://bucket/file.baz";
     assert_eq!("baz", get_extension_from_filename(file));
+    assert_eq!("file", get_file_stem(file));
+
+    let file = "s3://bucket/file";
+    assert_eq!("", get_extension_from_filename(file));
+    assert_eq!("file", get_file_stem(file));
 }
