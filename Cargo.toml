@@ -45,8 +45,12 @@ name = "genlib"
 path = "src/lib/mod.rs"
 
 [[bin]]
-name = "ask"
-path = "src/cli/invoke/main.rs"
+name = "nova"
+path = "src/cli/nova/nova_main.rs"
+
+[[bin]]
+name = "canvas"
+path = "src/cli/canvas/canvas_main.rs"
 
 [[bin]]
 name = "converse"
