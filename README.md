@@ -37,6 +37,7 @@ error[E0576]: cannot find method or associated constant `into_app` in trait `cla
 * amzn: support image and video input
 * amzn: plumb inference parameters
 * amzn: converse
+* amzn: support doc inputs (word, pdf)
 * amzn: RetrieveAndGenerate (is this possible with Converse?)
 * anthropic sonnet and haiku
 * pull request for shellfish clap issue
