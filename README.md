@@ -34,14 +34,17 @@ error[E0576]: cannot find method or associated constant `into_app` in trait `cla
 ```
 
 ## TODO
-* ~~amzn: support image input~~
-* ~~amzn: support video input~~
-* amzn: plumb inference parameters
-* amzn: converse
-* amzn: support doc inputs (word, pdf)
-* amzn: RetrieveAndGenerate (is this possible with Converse?)
-* anthropic sonnet and haiku
-* pull request for shellfish clap issue
+* Amazon Nova
+    * ~~support image input~~
+    * ~~amzn: support video input~~
+    * plumb inference parameters
+    * converse
+    * support doc inputs (word, pdf)
+    * RetrieveAndGenerate (is this only possible with Converse?)
+* anthropic 
+    * sonnet and haiku: specifically image output
+* General
+    * pull request for shellfish/clap issue?
 
 ## Bedrock Notes
 ### Docs
