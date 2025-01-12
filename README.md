@@ -1,6 +1,16 @@
 # gensh
 interactive shell for gen ai models
 
+## Setup
+
+To use, you need to have access to an AWS account so you can interact with Amazon Bedrock.  Additionally,
+you must [request and obtain access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
+to the Bedrock models you're interested in using.
+
+You must also have access to Bedrock.  One way to set this up is to get an IAM user with `BedrockFullAccess`
+and store their credentials in a `[default]` profile under `~/.aws/credentials`.  The tooling also supports
+overriding the default profile name via the `--aws-profile` option.
+
 ## Usage Examples
 
 ```
