@@ -68,7 +68,7 @@ overriding the default profile name via the `--aws-profile` option.
 ## Issues
 * Wire up all attachments in a single attach option
 * RetrieveAndGenerate
-* Wire up tool config between converse and canvas (or nova and canvas) to create images for recipes.
+* Create a separate CLI that uses ToolConfig and wires everything up to generate a recipe and a corresponding image (the tool would be Canvas).  Can ask the model for a suitable description.
 * Submit issue for shellfish/clap issue where the `shellfish` crate currently doesn't work with clap 4.x, since the `clap_command` macro calls `CommandFactory::into_app` from 3.x 
 * https://docs.rs/clap/latest/clap/index.html#modules
 * https://docs.rs/clap/3.2.16/clap/trait.CommandFactory.html
