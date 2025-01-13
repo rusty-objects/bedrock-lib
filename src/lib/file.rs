@@ -43,6 +43,14 @@ pub fn read_base64(filename: &str) -> String {
     BASE64_STANDARD.encode(contents)
 }
 
+/// Reads the contents of the specified file into an RFC4648 base64 encoded string
+///
+/// Filenames support ~ and env variables
+pub fn read(filename: &str) -> Vec<u8> {
+    let expanded = expand(filename);
+    fs::read(Path::new(expanded.as_str())).unwrap()
+}
+
 /// Writes the binary decoding of the supplied RFC4648 base64 encoded string to the
 /// specified file.
 ///

@@ -7,29 +7,9 @@ edition = "2021"
 # https://doc.rust-lang.org/cargo/reference/features.html
 [dependencies]
 shellfish = { version = "0.10.1", features = ["app", "async", "clap"] }
-# TODO - look up how to specify tokio with shellfish
-# async-std = { version = "1.13.0", features = ["attributes"] }
 rustyline = "15.0.0"
 
-# https://docs.rs/clap/latest/clap/index.html#modules
-#
-# Clap 4.x doesn't work because shellfish's macro depends on a trait function
-# that was deprecated in 3.x, CommandFactory::into_app:
-#
-# https://docs.rs/clap/3.2.16/clap/trait.CommandFactory.html
-#
-# So you get an error like:
-#
-# error[E0576]: cannot find method or associated constant `into_app` in trait `clap::CommandFactory`
-#   --> src/cli/gen/main.rs:44:26
-#    |
-# 44 |         .insert("greet", clap_command!((), GreetArgs, greet));
-#    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in `clap::CommandFactory`
-#    |
-#    = note: this error originates in the macro `clap_command` (in Nightly builds, run with -Z macro-backtrace for more info)
-# 
-# TODO: look at doing a pull request for shellfish
-#
+# see README.md for issue with clap 4.x and shellfish
 # clap = { version = "4.5.26", features = ["derive", "cargo"] }
 clap = { version = "3.2.16", features = ["derive", "cargo"] }
 aws-sdk-bedrockruntime = "1.67.0"
@@ -54,4 +34,4 @@ path = "src/cli/canvas/canvas_main.rs"
 
 [[bin]]
 name = "converse"
-path = "src/cli/converse/main.rs"
+path = "src/cli/converse/converse_main.rs"

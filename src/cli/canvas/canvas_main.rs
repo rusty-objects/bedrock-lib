@@ -54,7 +54,7 @@ struct CliArgs {
     verbose: bool,
 
     /// Output directory
-    #[clap(short, long, default_value = "./")]
+    #[clap(short, long, default_value = ".")]
     output: String,
 
     /// Negative prompt
@@ -77,8 +77,7 @@ struct CliArgs {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli: CliArgs = CliArgs::parse();
 
-    // Wire up SdkConfig.  Various reading on the subject:
-    //
+    // Wire up SdkConfig:
     // https://docs.rs/aws-config/latest/aws_config/
     // https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html
     // https://docs.aws.amazon.com/sdk-for-rust/latest/dg/configure.html
