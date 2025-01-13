@@ -38,6 +38,23 @@ $ cargo run --bin canvas --help
 $ cargo build && ./target/debug/canvas -v -p bedrock -o ~/Desktop -n "lily pads" "swan lake"
 ```
 
+### converse
+
+Uses the Converse API to talk to any model that supports chat.  Converse normalizes inputs across
+a unified API to make code portable across models.
+
+See the Amazon Bedrock user guide for more information:
+* https://docs.aws.amazon.com/bedrock/latest/userguide/inference.html
+* https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html
+* https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
+* https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html
+
+#### usage
+```
+$ cargo run --bin canvas --help
+$ cargo build && ./target/debug/converse -v -p bedrock -s "system prompt for the entire conversation"
+```
+
 ## Setup
 
 To use, you need to have access to an AWS account so you can interact with Amazon Bedrock.  Additionally,
@@ -49,14 +66,9 @@ and store their credentials in a `[default]` profile under `~/.aws/credentials`.
 overriding the default profile name via the `--aws-profile` option.
 
 ## Issues
-* Converse
-    * support doc inputs (word, pdf)
-    * anthropic 
-        * sonnet and haiku: specifically image output
-        * anthropic.claude-3-sonnet-20240229-v1:0
-        * https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-claude.html
-        * https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-text-completion.html
+* Wire up all attachments in a single attach option
 * RetrieveAndGenerate
+* Wire up tool config between converse and canvas (or nova and canvas) to create images for recipes.
 * Submit issue for shellfish/clap issue where the `shellfish` crate currently doesn't work with clap 4.x, since the `clap_command` macro calls `CommandFactory::into_app` from 3.x 
 * https://docs.rs/clap/latest/clap/index.html#modules
 * https://docs.rs/clap/3.2.16/clap/trait.CommandFactory.html
