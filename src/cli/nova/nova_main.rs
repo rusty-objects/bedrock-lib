@@ -6,19 +6,15 @@ use genlib::invoke_model::amazon::nova;
 /// Creative content models (Canvas and Reel) are not supported by this tool.
 ///
 /// For more information on Amazon Nova, read the user guide:
-///
 ///     https://docs.aws.amazon.com/nova/latest/userguide/
 ///
 /// You must be opted into the model specified in you AWS account:
-///
 ///     https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html
 ///
 /// You must also have permission for bedrock:InvokeModel:
-///
 ///     https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html
 ///
-/// == Example usage ==
-///
+/// Example usage;
 ///     nova --image ~/black_dog.jpeg --image ~/white_dog.jpeg "What is the difference between these dogs?"
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, verbatim_doc_comment)]
@@ -43,7 +39,7 @@ struct CliArgs {
     ///     https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html
     ///     https://docs.aws.amazon.com/sdk-for-rust/latest/dg/region.html
     ///     https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html
-    #[clap(short = 'p', long)]
+    #[clap(short = 'p', long, verbatim_doc_comment)]
     aws_profile: Option<String>,
 
     /// dumps raw input/output
@@ -59,7 +55,7 @@ struct CliArgs {
     ///     https://docs.aws.amazon.com/nova/latest/userguide/invoke.html#utilizing-system-prompt
     ///     https://www.regie.ai/blog/user-prompts-vs-system-prompts
     ///     https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management-create
-    #[clap(short, long)]
+    #[clap(short, long, verbatim_doc_comment)]
     system: Option<String>,
 
     /// The model to use.  Default: us.amazon.nova-lite-v1:0
@@ -84,12 +80,17 @@ struct CliArgs {
     ///
     ///     https://docs.aws.amazon.com/nova/latest/userguide/
     ///     https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html
-    #[clap(short, long, default_value = "us.amazon.nova-lite-v1:0")]
+    #[clap(
+        short,
+        long,
+        default_value = "us.amazon.nova-lite-v1:0",
+        verbatim_doc_comment
+    )]
     model: String,
 
     /// Prefilled assistant response.
     ///
-    /// If provided, then when this model is invoked this prompt will be sent to the model for itt o use to start off its answer.
+    /// If provided, then when this model is invoked this prompt will be sent to the model for it to use to start off its answer.
     #[clap(short, long)]
     assistant: Option<String>,
 
@@ -100,7 +101,7 @@ struct CliArgs {
     ///
     /// See:
     ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    #[clap(short, long)]
+    #[clap(short, long, verbatim_doc_comment)]
     image: Vec<String>,
 
     /// Paths for video content to send
@@ -110,7 +111,7 @@ struct CliArgs {
     ///
     /// See:
     ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    #[clap(short, long)]
+    #[clap(short, long, verbatim_doc_comment)]
     video: Vec<String>,
 
     /// S3 Uri for video content to send
@@ -124,7 +125,7 @@ struct CliArgs {
     /// Note: Amazon Nova supports cross-account S3 access but this tool does not.
     /// That would require modifying the tool to accept the bucket owner account id
     /// in the model invocation.
-    #[clap(short, long)]
+    #[clap(short, long, verbatim_doc_comment)]
     uri_video: Vec<String>,
 
     /// User prompt.

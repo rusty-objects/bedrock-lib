@@ -42,7 +42,7 @@ struct CliArgs {
     ///   https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html
     ///   https://docs.aws.amazon.com/sdk-for-rust/latest/dg/region.html
     ///   https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html
-    #[clap(short = 'p', long)]
+    #[clap(short = 'p', long, verbatim_doc_comment)]
     aws_profile: Option<String>,
 
     /// dumps raw input/output
@@ -75,7 +75,7 @@ struct CliArgs {
 // #[async_std::main]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cli = CliArgs::parse();
+    let cli: CliArgs = CliArgs::parse();
 
     // Wire up SdkConfig.  Various reading on the subject:
     //
