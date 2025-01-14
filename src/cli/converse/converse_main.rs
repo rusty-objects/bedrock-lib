@@ -45,7 +45,7 @@ struct CliArgs {
     ///   https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html
     ///   https://docs.aws.amazon.com/sdk-for-rust/latest/dg/region.html
     ///   https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html
-    #[clap(short = 'p', long)]
+    #[clap(long)]
     aws_profile: Option<String>,
 
     /// Whether output should be verbose

@@ -35,7 +35,7 @@ See the Amazon Bedrock user guide for more information:
 #### usage
 ```
 $ cargo run --bin canvas --help
-$ cargo build && ./target/debug/canvas -v -p bedrock -o ~/Desktop -n "lily pads" "swan lake"
+$ cargo build && ./target/debug/canvas -v --aws-profile bedrock -o ~/Desktop -n "lily pads" "swan lake"
 ```
 
 ### converse
@@ -52,7 +52,7 @@ See the Amazon Bedrock user guide for more information:
 #### usage
 ```
 $ cargo run --bin canvas --help
-$ cargo build && ./target/debug/converse -v -p bedrock -s "system prompt for the entire conversation"
+$ cargo build && ./target/debug/converse -v -aws-profile bedrock -s "system prompt for the entire conversation"
 ```
 
 ## Setup
