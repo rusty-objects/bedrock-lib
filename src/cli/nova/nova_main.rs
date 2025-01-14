@@ -92,41 +92,20 @@ struct CliArgs {
     ///
     /// If provided, then when this model is invoked this prompt will be sent to the model for it to use to start off its answer.
     #[clap(short, long)]
-    assistant: Option<String>,
+    prefill: Option<String>,
 
-    /// Paths for image content to send
+    /// Additional media files (images, videos) to attach as context for the model.
     ///
-    /// This tool won't validate the files are supported.  Not all models support
-    /// all modalities.
+    /// Each file should be specified with its own --attach argument.
+    /// Media type will be determined from the file extension.
     ///
-    /// See:
-    ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    #[clap(short, long, verbatim_doc_comment)]
-    image: Vec<String>,
-
-    /// Paths for video content to send
+    /// Supported formats:
+    /// - Images: png, jpg, jpeg, gif, webp (local files only)
+    /// - Videos: mp4, mov, mkv, webm, flv, mpeg, mpg, wmv, 3gp (supports both local files and S3 locations via s3://)
     ///
-    /// This tool won't validate the files are supported.  Not all models support
-    /// all modalities.
-    ///
-    /// See:
-    ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    #[clap(short, long, verbatim_doc_comment)]
-    video: Vec<String>,
-
-    /// S3 Uri for video content to send
-    ///
-    /// This tool won't validate the files are supported.  Not all models support
-    /// all modalities.
-    ///
-    /// See:
-    ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    ///
-    /// Note: Amazon Nova supports cross-account S3 access but this tool does not.
-    /// That would require modifying the tool to accept the bucket owner account id
-    /// in the model invocation.
-    #[clap(short, long, verbatim_doc_comment)]
-    uri_video: Vec<String>,
+    /// Note: S3 locations (s3://) are only supported for video files.
+    #[clap(short, long)]
+    attach: Vec<String>,
 
     /// User prompt.
     ///
@@ -228,33 +207,32 @@ impl From<CliArgs> for nova::Request {
         // add text
         user_content.push(nova::Content::Text(value.prompt));
 
-        // add inline images
-        for image in value.image {
-            let format = genlib::file::get_extension_from_filename(&image);
-            let base64 = genlib::file::read_base64(&image);
-            user_content.push(nova::Content::Image(nova::Image {
-                format,
-                source: nova::ImageSource { bytes: base64 },
-            }));
-        }
-
-        // add inline videos
-        for video in value.video {
-            let format = genlib::file::get_extension_from_filename(&video);
-            let base64 = genlib::file::read_base64(&video);
-            user_content.push(nova::Content::Video(nova::Video {
-                format,
-                source: nova::VideoSource::Bytes(base64),
-            }));
-        }
-
-        // add s3 videos
-        for uri in value.uri_video {
-            let format = genlib::file::get_extension_from_filename(&uri);
-            user_content.push(nova::Content::Video(nova::Video {
-                format,
-                source: nova::VideoSource::S3Location(nova::S3Location { uri }),
-            }));
+        // add media attachments
+        for path in value.attach {
+            let (ftype, floc, _stem, ext) = genlib::file::detect(path.clone());
+            match (ftype, floc) {
+                (genlib::file::Type::Image, genlib::file::Location::Local) => {
+                    let base64 = genlib::file::read_base64(&path);
+                    user_content.push(nova::Content::Image(nova::Image {
+                        format: ext.0,
+                        source: nova::ImageSource { bytes: base64 },
+                    }));
+                }
+                (genlib::file::Type::Video, genlib::file::Location::Local) => {
+                    let base64 = genlib::file::read_base64(&path);
+                    user_content.push(nova::Content::Video(nova::Video {
+                        format: ext.0,
+                        source: nova::VideoSource::Bytes(base64),
+                    }));
+                }
+                (genlib::file::Type::Video, genlib::file::Location::S3) => {
+                    user_content.push(nova::Content::Video(nova::Video {
+                        format: ext.0,
+                        source: nova::VideoSource::S3Location(nova::S3Location { uri: path }),
+                    }));
+                }
+                _ => panic!("Unsupported file type: {}", path),
+            }
         }
 
         // add now-complete user_content to messages
@@ -269,7 +247,7 @@ impl From<CliArgs> for nova::Request {
         //
         // https://www.walturn.com/insights/mastering-prompt-engineering-for-claude
         // --------------
-        if let Some(prefill) = value.assistant {
+        if let Some(prefill) = value.prefill {
             messages.push(nova::Message {
                 role: nova::Role::Assistant,
                 content: vec![nova::Content::Text(prefill)],

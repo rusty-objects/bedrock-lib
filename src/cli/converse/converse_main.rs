@@ -168,46 +168,19 @@ pub struct ConversationState {
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct SayArgs {
-    /// Paths for image content to send
+    /// Additional media files (images, videos, documents) to attach as context for the model.
     ///
-    /// This tool won't validate the files are supported.  Not all models support
-    /// all modalities.
+    /// Each file should be specified with its own --attach argument.  Media type will be determined from the file extension.
     ///
-    /// See:
-    ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    #[clap(short, long, verbatim_doc_comment)]
-    image: Vec<String>,
-
-    /// Paths for video content to send
+    /// Supported formats:
+    /// - Images: png, jpg, jpeg, gif, webp (local files only)
+    /// - Videos: mp4, mov, mkv, webm, flv, mpeg, mpg, wmv, 3gp (supports both local files and S3 locations via s3://)
+    /// - Documents: csv, doc, docx, html, md, pdf, txt, xls, xlsx (local files only)
     ///
-    /// This tool won't validate the files are supported.  Not all models support
-    /// all modalities.
-    ///
-    /// See:
-    ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    #[clap(short, long, verbatim_doc_comment)]
-    video: Vec<String>,
-
-    /// S3 Uri for video content to send
-    ///
-    /// This tool won't validate the files are supported.  Not all models support
-    /// all modalities.
-    ///
-    /// See:
-    ///     https://docs.aws.amazon.com/nova/latest/userguide/modalities.html
-    ///
-    /// Note: Amazon Nova supports cross-account S3 access but this tool does not.
-    /// That would require modifying the tool to accept the bucket owner account id
-    /// in the model invocation.
-    #[clap(short, long, verbatim_doc_comment)]
-    uri_video: Vec<String>,
-
-    /// Path for documents to send
-    ///
-    /// See:
-    ///     https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.DocumentFormat.html
-    #[clap(short, long, verbatim_doc_comment)]
-    doc: Vec<String>,
+    /// Note: S3 locations (s3://) are only supported for video files.
+    /// Note: Not all models support all modalities.
+    #[clap(short, long)]
+    attach: Vec<String>,
 
     /// The prompt for your next turn in the conversation
     prompt: String,
@@ -219,114 +192,95 @@ async fn say(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // ===========================
     // Create a new message from SayArgs
+    // with the prompt and attachments
     // ===========================
     let mut msg_builder = Message::builder().role(ConversationRole::User);
 
     // ---- prompt ----
     msg_builder = msg_builder.content(ContentBlock::Text(args.prompt));
 
-    // ---- images ----
-    for path in args.image {
-        // ----- figure out the format (use extension for now) -----
-        // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.ImageFormat.html
-        let format = genlib::file::get_extension_from_filename(&path);
-        let format = match format.to_lowercase().as_str() {
-            "gif" => ImageFormat::Gif,
-            "jpeg" | "jpg" => ImageFormat::Jpeg,
-            "png" => ImageFormat::Png,
-            "webp" => ImageFormat::Webp,
+    // --- add attachments ---
+    // have to figure out what and where the path refers to
+    for path in args.attach {
+        let (ftype, floc, stem, ext) = genlib::file::detect(path.clone());
+        match (ftype, floc) {
+            (genlib::file::Type::Image, genlib::file::Location::Local) => {
+                let format = match image_fmt(&ext.0) {
+                    Some(format) => format,
+                    None => {
+                        println!("invalid image format {}, aborting message", path);
+                        return Ok(());
+                    }
+                };
+                let blob = genlib::file::read(&path).into();
+                let img_src = ImageSource::Bytes(blob);
+                let img_block = ImageBlock::builder()
+                    .format(format)
+                    .source(img_src)
+                    .build()
+                    .unwrap();
+                msg_builder = msg_builder.content(ContentBlock::Image(img_block));
+            }
+            (genlib::file::Type::Video, genlib::file::Location::Local) => {
+                let format = video_fmt(&ext.0);
+                let format = match format {
+                    Some(fmt) => fmt,
+                    None => {
+                        println!("invalid video format {}, aborting message", path);
+                        return Ok(());
+                    }
+                };
+                let blob = genlib::file::read(&path).into();
+                let vid_src = VideoSource::Bytes(blob);
+                let vid_block = VideoBlock::builder()
+                    .format(format)
+                    .source(vid_src)
+                    .build()
+                    .unwrap();
+                msg_builder = msg_builder.content(ContentBlock::Video(vid_block));
+            }
+            (genlib::file::Type::Video, genlib::file::Location::S3) => {
+                let format = video_fmt(&ext.0);
+                let format = match format {
+                    Some(fmt) => fmt,
+                    None => {
+                        println!("invalid video format {}, abbording message", path);
+                        return Ok(());
+                    }
+                };
+                let s3loc = S3Location::builder().uri(path.clone()).build().unwrap();
+                let vid_src = VideoSource::S3Location(s3loc);
+                let vid_block = VideoBlock::builder()
+                    .format(format)
+                    .source(vid_src)
+                    .build()
+                    .unwrap();
+                msg_builder = msg_builder.content(ContentBlock::Video(vid_block));
+            }
+            (genlib::file::Type::Document, genlib::file::Location::Local) => {
+                let format = doc_fmt(&ext.0);
+                let format = match format {
+                    Some(fmt) => fmt,
+                    None => {
+                        println!("invalid doc format {}, aborting message", path);
+                        return Ok(());
+                    }
+                };
+                let blob = genlib::file::read(&path).into();
+                let doc_src = DocumentSource::Bytes(blob);
+                let doc_block = DocumentBlock::builder()
+                    .format(format)
+                    .source(doc_src)
+                    .name(stem.0)
+                    .build()
+                    .unwrap();
+                msg_builder = msg_builder.content(ContentBlock::Document(doc_block));
+            }
             _ => {
-                println!("invalid image format {}, aborting message", format);
+                println!("Unsupported file type: {}", path);
                 return Ok(());
             }
-        };
-
-        let blob = genlib::file::read(&path).into();
-        let img_src = ImageSource::Bytes(blob);
-        let img_block = ImageBlock::builder()
-            .format(format)
-            .source(img_src)
-            .build()
-            .unwrap();
-        msg_builder = msg_builder.content(ContentBlock::Image(img_block));
-    }
-
-    // ---- video from local file system ----
-    for path in args.video {
-        // ----- figure out the format (use extension for now) -----
-        // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.VideoFormat.html
-        let format = video_fmt(&path);
-        let format = match format {
-            Some(fmt) => fmt,
-            None => {
-                println!("invalid video format {}, skipping", path);
-                return Ok(());
-            }
-        };
-        let blob = genlib::file::read(&path).into();
-        let vid_src = VideoSource::Bytes(blob);
-        let vid_block = VideoBlock::builder()
-            .format(format)
-            .source(vid_src)
-            .build()
-            .unwrap();
-        msg_builder = msg_builder.content(ContentBlock::Video(vid_block));
-    }
-
-    // ---- video from s3 ----
-    for path in args.uri_video {
-        // ----- figure out the format (use extension for now) -----
-        // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.VideoFormat.html
-        let format = video_fmt(&path);
-        let format = match format {
-            Some(fmt) => fmt,
-            None => {
-                println!("invalid video format {}, skipping", path);
-                return Ok(());
-            }
-        };
-        let s3loc = S3Location::builder().uri(path.clone()).build().unwrap();
-        let vid_src = VideoSource::S3Location(s3loc);
-        let vid_block = VideoBlock::builder()
-            .format(format)
-            .source(vid_src)
-            .build()
-            .unwrap();
-        msg_builder = msg_builder.content(ContentBlock::Video(vid_block));
-    }
-
-    // ---- documents ----
-
-    for path in args.doc {
-        // ----- figure out the format (use extension for now) -----
-        // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.DocumentFormat.html
-        let format = genlib::file::get_extension_from_filename(&path);
-        let format = match format.to_lowercase().as_str() {
-            "csv" => DocumentFormat::Csv,
-            "doc" => DocumentFormat::Doc,
-            "docx" => DocumentFormat::Docx,
-            "html" => DocumentFormat::Html,
-            "md" => DocumentFormat::Md,
-            "pdf" => DocumentFormat::Pdf,
-            "txt" => DocumentFormat::Txt,
-            "xls" => DocumentFormat::Xls,
-            "xlsx" => DocumentFormat::Xlsx,
-            _ => {
-                println!("invalid document format {}, aborting message", format);
-                return Ok(());
-            }
-        };
-
-        let blob = genlib::file::read(&path).into();
-        let name: String = genlib::file::get_file_stem(&path).into();
-        let doc_src = DocumentSource::Bytes(blob);
-        let doc_block = DocumentBlock::builder()
-            .format(format)
-            .name(name)
-            .source(doc_src)
-            .build()
-            .unwrap();
-        msg_builder = msg_builder.content(ContentBlock::Document(doc_block));
+        }
     }
 
     // ------- construct message --------
@@ -375,6 +329,8 @@ async fn say(
                 _ => panic!("Unknown response ContentBlock: {:?}", content),
             }
         }
+
+        // Add the response to the tail of the conversation for the next turn
         state.messages.push(msg.clone())
     } else {
         panic!("No output??");
@@ -383,9 +339,9 @@ async fn say(
     Ok(())
 }
 
-fn video_fmt(path: &str) -> Option<VideoFormat> {
-    let format = genlib::file::get_extension_from_filename(path);
-    return match format.to_lowercase().as_str() {
+// https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.VideoFormat.html
+fn video_fmt(format: &str) -> Option<VideoFormat> {
+    return match format {
         "flv" => Some(VideoFormat::Flv),
         "mkv" => Some(VideoFormat::Mkv),
         "mov" => Some(VideoFormat::Mov),
@@ -395,6 +351,33 @@ fn video_fmt(path: &str) -> Option<VideoFormat> {
         "3gp" => Some(VideoFormat::ThreeGp),
         "webm" => Some(VideoFormat::Webm),
         "wmv" => Some(VideoFormat::Wmv),
+        _ => None,
+    };
+}
+
+// https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.ImageFormat.html
+fn image_fmt(format: &str) -> Option<ImageFormat> {
+    return match format.to_lowercase().as_str() {
+        "gif" => Some(ImageFormat::Gif),
+        "jpeg" | "jpg" => Some(ImageFormat::Jpeg),
+        "png" => Some(ImageFormat::Png),
+        "webp" => Some(ImageFormat::Webp),
+        _ => None,
+    };
+}
+
+// https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.DocumentFormat.html
+fn doc_fmt(format: &str) -> Option<DocumentFormat> {
+    return match format.to_lowercase().as_str() {
+        "csv" => Some(DocumentFormat::Csv),
+        "doc" => Some(DocumentFormat::Doc),
+        "docx" => Some(DocumentFormat::Docx),
+        "html" => Some(DocumentFormat::Html),
+        "md" => Some(DocumentFormat::Md),
+        "pdf" => Some(DocumentFormat::Pdf),
+        "txt" => Some(DocumentFormat::Txt),
+        "xls" => Some(DocumentFormat::Xls),
+        "xlsx" => Some(DocumentFormat::Xlsx),
         _ => None,
     };
 }

@@ -61,6 +61,49 @@ pub fn write_base64(filename: &str, contents: String) {
     let _ = fs::write(Path::new(expanded.as_str()), decoded).unwrap();
 }
 
+pub enum Location {
+    Local,
+    S3,
+}
+
+pub enum Type {
+    Image,
+    Video,
+    Document,
+}
+
+pub struct FileStem(pub String);
+pub struct FileExtension(pub String);
+
+pub fn detect(path: String) -> (Type, Location, FileStem, FileExtension) {
+    // Determine location based on path prefix
+    let location = if path.starts_with("s3://") {
+        Location::S3
+    } else {
+        Location::Local
+    };
+
+    // Get file stem and extension
+    let stem = FileStem(get_file_stem(&path).to_lowercase());
+    let extension = FileExtension(get_extension_from_filename(&path));
+
+    // Determine file type based on extension
+    let file_type = match extension.0.to_lowercase().as_str() {
+        // Image formats
+        "png" | "jpg" | "jpeg" | "gif" | "webp" => Type::Image,
+
+        // Video formats
+        "mp4" | "mov" | "webm" | "mpeg" | "mpg" | "m4v" | "avi" => Type::Video,
+
+        // Document formats
+        "csv" | "doc" | "docx" | "html" | "md" | "pdf" | "txt" | "xls" | "xlsx" => Type::Document,
+
+        _ => panic!("Unsupported file type {}", path),
+    };
+
+    (file_type, location, stem, extension)
+}
+
 #[test]
 fn extension() {
     let file = "/tmp/foo.bar";
