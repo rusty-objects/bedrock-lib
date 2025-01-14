@@ -39,7 +39,7 @@ struct CliArgs {
     ///     https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html
     ///     https://docs.aws.amazon.com/sdk-for-rust/latest/dg/region.html
     ///     https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html
-    #[clap(short = 'p', long, verbatim_doc_comment)]
+    #[clap(long, verbatim_doc_comment)]
     aws_profile: Option<String>,
 
     /// dumps raw input/output
