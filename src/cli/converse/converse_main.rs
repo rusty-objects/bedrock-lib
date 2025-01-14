@@ -20,7 +20,7 @@ use shellfish::{clap_command, handler::DefaultAsyncHandler, Shell};
 
 /// Hold a multi-turn interactive conversation with a model
 ///
-/// Callers need permission for `InvokeModel`
+/// Callers need permission for `bedrock:InvokeModel`
 ///
 /// Example:
 ///     converse -p bedrock -o ~/Desktop -m us.amazon.nova-lite-v1:0

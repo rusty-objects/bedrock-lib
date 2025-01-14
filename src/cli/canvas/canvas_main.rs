@@ -7,7 +7,7 @@ use genlib::invoke_model::amazon::canvas::{self, ImageGenerationConfig};
 /// model-id: amazon.nova-canvas-v1:0
 ///
 /// You must be opted into the model specified in you AWS account have have
-/// bedrock:InvokeModel permissions:
+/// `bedrock:InvokeModel` permissions:
 ///     https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html
 ///     https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html
 ///
