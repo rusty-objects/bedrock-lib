@@ -20,6 +20,7 @@ shellexpand = "3.1.0"
 shellfish = { version = "0.10.1", features = ["app", "async", "clap"] }
 stderrlog = "0.6.0"
 tokio = { version = "1", features = ["full"] }
+sanitize-filename = "0.6.0"
 
 [lib]
 name = "rusty_bedrock_lib"

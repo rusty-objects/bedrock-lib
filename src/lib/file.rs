@@ -48,6 +48,10 @@ pub fn get_file_stem(filename: &str) -> String {
         .unwrap_or_default()
 }
 
+pub fn sanitize(filename: String) -> String {
+    sanitize_filename::sanitize(filename)
+}
+
 /// Expands filenames with ~ and env variables.  Does not turn
 /// relative paths into absolute.
 pub fn expand(filename: &str) -> String {
@@ -167,4 +171,12 @@ fn extension() {
     let file = "s3://bucket/file";
     assert_eq!("", get_extension_from_filename(file));
     assert_eq!("file", get_file_stem(file));
+}
+
+#[test]
+fn test_sanitize() {
+    assert_eq!(
+        "sdf.....fo..o...(S&DFsdhfj.txt".to_string(),
+        sanitize("sdf/../../.fo./.o/.../(*S&DFsdhfj.txt".to_string())
+    );
 }
