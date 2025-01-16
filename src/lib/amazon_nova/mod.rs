@@ -1,2 +1,2 @@
 pub mod canvas;
-pub mod nova;
+pub mod text;

@@ -1,4 +1,4 @@
-//! Specific implementation of InvokeModel request/response structs Amazon Nova models
+//! Specific implementation of InvokeModel request/response structs Amazon Nova text models
 //!
 //! The rust structs here are set up so that serde generates compatible json according
 //! to the published request schema:
@@ -17,10 +17,12 @@
 // https://stackoverflow.com/questions/59167416/how-can-i-deserialize-an-enum-when-the-case-doesnt-match
 // https://stackoverflow.com/questions/53900612/how-do-i-avoid-generating-json-when-serializing-a-value-that-is-null-or-a-defaul
 
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Request {
+pub struct TextRequest {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub system: Vec<SystemPrompt>,
 
@@ -32,6 +34,12 @@ pub struct Request {
     #[serde(skip_serializing_if = "InferenceConfig::is_empty")]
     pub inference_config: InferenceConfig,
     // toolConfig: ToolConfig, // TODO
+}
+impl Display for TextRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let json = serde_json::to_string(&self).unwrap();
+        f.write_str(json.as_str())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -120,12 +128,6 @@ impl InferenceConfig {
             && self.top_p.is_none()
             && self.top_k.is_none()
             && self.stop_sequences.is_empty()
-    }
-}
-
-impl ToString for Request {
-    fn to_string(&self) -> String {
-        serde_json::to_string(&self).unwrap()
     }
 }
 

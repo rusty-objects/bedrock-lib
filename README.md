@@ -1,62 +1,34 @@
-# gensh
-interactive shell for gen ai models
+# bedrock_lib
+* Rust struct data model for `bedrock::InvokeModel` Amazon Nova text and Canvas models, including image/video input.
+* Rust struct data models for `bedrock::Converse` with support for image, video, and docuemnt input, and basic support for tool usage.
+* CLI references using the libraries (no tool usage)
 
-### nova
+clones and unwraps like crazy
 
-Invokes the Amazon Nova family of text models, using Bedrock's `InvokeModel` call under the hood.
-
-InvokeModel does not have a unified API across models (takes a Blob `body` input, which is a model specific
-json document).
-
-See the Amazon Bedrock user guide for more information:
-* https://docs.aws.amazon.com/bedrock/latest/userguide/inference.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html
-
-#### usage
+## Usage
 ```
-$ cargo run --bin nova --help
-$ cargo build && ./target/debug/nova --verbose --aws-profile bedrock --system "you are a pirate" --assistant "Here is a rhyming answer:" "What should I have for dinner?"
-```
-
-### canvas
-
-Invokes the Amazon Nova Canvas image generation model, using Bedrock's `InvokeModel` under the hood.
-
-InvokeModel does not have a unified API across models (takes a Blob `body` input, which is a model specific
-json document).  The request schema for Amazon Nova Canvas is different than for the text models.
-
-See the Amazon Bedrock user guide for more information:
-* https://docs.aws.amazon.com/nova/latest/userguide/content-generation.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html
-
-#### usage
-```
-$ cargo run --bin canvas --help
-$ cargo build && ./target/debug/canvas -v --aws-profile bedrock -o ~/Desktop -n "lily pads" "swan lake"
-```
-
-### converse
-
-Uses the Converse API to talk to any model that supports chat.  Converse normalizes inputs across
-a unified API to make code portable across models.
-
-See the Amazon Bedrock user guide for more information:
-* https://docs.aws.amazon.com/bedrock/latest/userguide/inference.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
-* https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html
-
-#### usage
-```
-$ cargo run --bin canvas --help
-$ cargo build && ./target/debug/converse -v -aws-profile bedrock -s "system prompt for the entire conversation"
+$ cargo build
+$ PATH=$PATH:./target/debug/
+$
+$ nova --help # interact with Amazon Nova text models
+$ nova --verbose --aws-profile bedrock --system "you are a pirate" --assistant "Here is a rhyming answer:" "What should I have for dinner?"
+$
+$ canvas --help # interact with Amazon Canvas
+$ canvas --negative "lily pads" "swan lake"
+$
+$ converse --help # Have an interactive conversation with the model of your choice
+$ converse -v -aws-profile bedrock -s "system prompt for the entire conversation"
+$
+$ models --help # List foundational models with on demand invocation support
+$ models anthropic
 ```
 
 ## Setup
 
+### Rust
+You must have [Rust installed](https://www.rust-lang.org/tools/install).
+
+### Amazon Bedrock
 To use, you need to have access to an AWS account so you can interact with Amazon Bedrock.  Additionally,
 you must [request and obtain access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 to the Bedrock models you're interested in using.
@@ -65,13 +37,13 @@ You must also have access to Bedrock.  One way to set this up is to get an IAM u
 and store their credentials in a `[default]` profile under `~/.aws/credentials`.  The tooling also supports
 overriding the default profile name via the `--aws-profile` option.
 
-## Issues
-* Wire up all attachments in a single attach option
-* RetrieveAndGenerate
-* Create a separate CLI that uses ToolConfig and wires everything up to generate a recipe and a corresponding image (the tool would be Canvas).  Can ask the model for a suitable description.
+## TODO
+* There are calls to `unwrap` abound, so if something goes wrong, behavior is often a panic.   If this becomes anything serious will need to get serious about gracefully handling Error conditions.
+* Add RAG support via RetrieveAndGenerate
+* Create a separate CLI that demonstrates tool usage (e.g. canvas can be the tool).
 * Submit issue for shellfish/clap issue where the `shellfish` crate currently doesn't work with clap 4.x, since the `clap_command` macro calls `CommandFactory::into_app` from 3.x 
-* https://docs.rs/clap/latest/clap/index.html#modules
-* https://docs.rs/clap/3.2.16/clap/trait.CommandFactory.html
+    * https://docs.rs/clap/latest/clap/index.html#modules
+    * https://docs.rs/clap/3.2.16/clap/trait.CommandFactory.html
 
 The error with 4.x:
 
@@ -95,9 +67,14 @@ error[E0576]: cannot find method or associated constant `into_app` in trait `cla
 * [Bedrock Rust SDK](https://github.com/awslabs/aws-sdk-rust) ([crate](https://github.com/awslabs/aws-sdk-rust))
 * [Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/welcome.html) 
 * [Bedrock User Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/)
+    * https://docs.aws.amazon.com/bedrock/latest/userguide/inference.html
+    * https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html
+    * https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
+    * https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html
+* [Nova User Guide][https://docs.aws.amazon.com/nova/latest/userguide/]
+    * * https://docs.aws.amazon.com/nova/latest/userguide/content-generation.html
 * APIs
     * [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_Operations_Amazon_Bedrock.html): Control plane, including batch job invocation and management.
     * [Amazon Bedrock Rutime](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_Operations_Amazon_Bedrock_Runtime.html): Data plane for individual model invocation/conversing, including async invoke.  Also includes guardrail application.
     * [Agents for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_Operations_Agents_for_Amazon_Bedrock.html): Agent Control plane, including flow APIs and knowledge base APIs
     * [Agents for Amazon Bedrock Runtime](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_Operations_Agents_for_Amazon_Bedrock_Runtime.html): Agent Data plane, including flow APIs
-* [Nova User Guide][https://docs.aws.amazon.com/nova/latest/userguide/]

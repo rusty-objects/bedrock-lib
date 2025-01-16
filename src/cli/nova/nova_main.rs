@@ -1,5 +1,5 @@
 use clap::Parser;
-use genlib::invoke_model::amazon::nova;
+use rusty_bedrock_lib::{file::FileReference, nova};
 
 /// Invokes Amazon's Nova family of text models on Bedrock
 ///
@@ -42,9 +42,9 @@ struct CliArgs {
     #[clap(long, verbatim_doc_comment)]
     aws_profile: Option<String>,
 
-    /// dumps raw input/output
+    /// prints request/response detail
     #[clap(short, long)]
-    debug: bool,
+    verbose: bool,
 
     /// System prompt.
     ///
@@ -88,6 +88,12 @@ struct CliArgs {
     )]
     model: String,
 
+    /// Lists Amazon-provided models
+    ///
+    /// Useful if you want to try another model and need it's model-id or inference-profile-id
+    #[clap(short, long)]
+    list: bool,
+
     /// Prefilled assistant response.
     ///
     /// If provided, then when this model is invoked this prompt will be sent to the model for it to use to start off its answer.
@@ -115,213 +121,34 @@ struct CliArgs {
 
 // #[async_std::main]
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
     let cli = CliArgs::parse();
 
-    // Wire up SdkConfig:
-    // https://docs.rs/aws-config/latest/aws_config/
-    // https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html
-    // https://docs.aws.amazon.com/sdk-for-rust/latest/dg/configure.html
-    // https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html
-    // https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html
-    // https://docs.rs/aws-config/latest/aws_config/profile/credentials/struct.ProfileFileCredentialsProvider.html
-    // https://docs.rs/aws-config/latest/aws_config/profile/struct.ProfileFileRegionProvider.html
-    let config = if let Some(profile) = cli.aws_profile.clone() {
-        aws_config::from_env()
-            .credentials_provider(
-                aws_config::profile::ProfileFileCredentialsProvider::builder()
-                    .profile_name(profile.clone())
-                    .build(),
-            )
-            .region(
-                aws_config::profile::ProfileFileRegionProvider::builder()
-                    .profile_name(profile)
-                    .build(),
-            )
-            .load()
-            .await
-    } else {
-        aws_config::load_from_env().await
-    };
+    let verbosity = if cli.verbose { 3 } else { 2 };
+    stderrlog::new().verbosity(verbosity).init().unwrap();
 
-    // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/
-    let client = aws_sdk_bedrockruntime::Client::new(&config);
-
-    let request: nova::Request = cli.clone().into();
-
-    if cli.debug {
-        println!(">>> request");
-        println!("id: {}", cli.model);
-        println!("{}", request.to_string());
+    if cli.list {
+        let cpclient = rusty_bedrock_lib::new_controlplane_client(cli.aws_profile.clone()).await;
+        let list = rusty_bedrock_lib::list_models(&cpclient, Some("Amazon".to_string())).await;
+        for item in list {
+            println!("{}", item);
+        }
+        return;
     }
 
-    // Send InvokeModel to Amazon Bedrock
-    //
-    // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/struct.Client.html#method.invoke_model
-    let result = client
-        .invoke_model()
-        .content_type("application/json")
-        .accept("application/json")
-        .model_id(cli.model)
-        .body(request.to_string().into_bytes().into())
-        .send()
-        .await;
+    let client = rusty_bedrock_lib::new_runtime_client(cli.aws_profile).await;
 
-    // Process the results, pretty printing the output
-    match result {
-        Ok(result) => {
-            let body = result.clone().body;
-            let body_bytes = body.as_ref();
-            let body_string = String::from_utf8(body_bytes.to_owned()).unwrap();
+    let attachments: Vec<FileReference> = cli.attach.into_iter().map(|s| s.into()).collect();
+    let result = nova::text::invoke_model(
+        &client,
+        cli.model,
+        None,
+        attachments,
+        cli.system,
+        cli.prefill,
+        cli.prompt,
+    )
+    .await;
 
-            if cli.debug {
-                println!("\n<<< response\n{:#?}", result);
-
-                // printing the result will redact the contents of the body, so we print explicitly
-                println!("{}\n", body_string);
-            }
-
-            println!("{}", parse_response(body_string));
-        }
-        Err(result) => println!("\nerror:\n{:#?}", result),
-    }
-
-    Ok(())
-}
-
-impl From<CliArgs> for nova::Request {
-    fn from(value: CliArgs) -> Self {
-        // ==============
-        // The messages to be sent
-        // ==============
-        let mut messages = vec![];
-
-        // --------------
-        // User content of the message.
-        // This is required and must be the first content in the message list.
-        //
-        // User content may contain several elements, including multi-modal.
-        // --------------
-        let mut user_content = vec![];
-
-        // add text
-        user_content.push(nova::Content::Text(value.prompt));
-
-        // add media attachments
-        for path in value.attach {
-            let (ftype, floc, _stem, ext) = genlib::file::detect(path.clone());
-            match (ftype, floc) {
-                (genlib::file::Type::Image, genlib::file::Location::Local) => {
-                    let base64 = genlib::file::read_base64(&path);
-                    user_content.push(nova::Content::Image(nova::Image {
-                        format: ext.0,
-                        source: nova::ImageSource { bytes: base64 },
-                    }));
-                }
-                (genlib::file::Type::Video, genlib::file::Location::Local) => {
-                    let base64 = genlib::file::read_base64(&path);
-                    user_content.push(nova::Content::Video(nova::Video {
-                        format: ext.0,
-                        source: nova::VideoSource::Bytes(base64),
-                    }));
-                }
-                (genlib::file::Type::Video, genlib::file::Location::S3) => {
-                    user_content.push(nova::Content::Video(nova::Video {
-                        format: ext.0,
-                        source: nova::VideoSource::S3Location(nova::S3Location { uri: path }),
-                    }));
-                }
-                _ => panic!("Unsupported file type: {}", path),
-            }
-        }
-
-        // add now-complete user_content to messages
-        messages.push(nova::Message {
-            role: nova::Role::User,
-            content: user_content,
-        });
-
-        // --------------
-        // The assistant content (aka "prefill") of the message.
-        // Optional and must occur last.
-        //
-        // https://www.walturn.com/insights/mastering-prompt-engineering-for-claude
-        // --------------
-        if let Some(prefill) = value.prefill {
-            messages.push(nova::Message {
-                role: nova::Role::Assistant,
-                content: vec![nova::Content::Text(prefill)],
-            });
-        }
-
-        // ===============
-        // The system prompt.  Optional.
-        //
-        // https://www.walturn.com/insights/mastering-prompt-engineering-for-claude
-        // ===============
-        let mut system = vec![];
-        if let Some(prompt) = value.system {
-            system.push(nova::SystemPrompt { text: prompt });
-        }
-
-        // ===============
-        // Inference configuration
-        // TODO allow this to be configured, maybe
-        // ===============
-        let inference_config: nova::InferenceConfig = Default::default();
-
-        nova::Request {
-            system,
-            messages,
-            inference_config,
-        }
-    }
-}
-
-fn parse_response(body: String) -> String {
-    let rsp: nova::Response = serde_json::from_str(body.as_str())
-        .unwrap_or_else(|err| panic!("JSON was not well-formatted: err: {:?}, body:{}", err, body));
-    let msg = rsp.output.message;
-
-    assert_eq!(nova::Role::Assistant, msg.role);
-
-    let mut s = None;
-    for content in msg.content {
-        match content {
-            nova::Content::Text(val) => match s {
-                None => s = Some(val),
-                Some(_) => panic!("content with multiple text elements? {}", body),
-            },
-            nova::Content::Image(_) => unimplemented!("nova doesn't support image output modality"),
-            nova::Content::Video(_) => unimplemented!("nova doesn't support video output modality"),
-        }
-    }
-
-    s.unwrap_or_default()
-}
-
-#[test]
-fn conversion() {
-    let prompt = "x".to_owned();
-    let args = CliArgs {
-        aws_profile: None,
-        debug: false,
-        model: Default::default(),
-        system: None,
-        assistant: None,
-        image: vec![],
-        video: vec![],
-        uri_video: vec![],
-        prompt: prompt.clone(),
-    };
-
-    let request = Into::<nova::Request>::into(args);
-
-    assert_eq!(1, request.messages.len());
-    assert_eq!(nova::Role::User, request.messages[0].role);
-    assert_eq!(1, request.messages[0].content.len());
-    match &(request.messages[0].content[0]) {
-        nova::Content::Text(c) => assert_eq!(c, &prompt),
-        _ => panic!("bad content"),
-    }
+    println!("{}", result.1);
 }

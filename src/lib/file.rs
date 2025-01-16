@@ -61,6 +61,14 @@ pub fn write_base64(filename: &str, contents: String) {
     let _ = fs::write(Path::new(expanded.as_str()), decoded).unwrap();
 }
 
+/// Writes the supplied utf-8 string to the specified file
+///
+/// Filenames support ~ and env variables
+pub fn write_string(filename: &str, contents: String) {
+    let expanded = expand(filename);
+    let _ = fs::write(Path::new(expanded.as_str()), contents);
+}
+
 pub enum Location {
     Local,
     S3,
@@ -75,33 +83,51 @@ pub enum Type {
 pub struct FileStem(pub String);
 pub struct FileExtension(pub String);
 
-pub fn detect(path: String) -> (Type, Location, FileStem, FileExtension) {
-    // Determine location based on path prefix
-    let location = if path.starts_with("s3://") {
-        Location::S3
-    } else {
-        Location::Local
-    };
+pub struct FileReference {
+    pub file_type: Type,
+    pub location: Location,
+    pub path: String,
+    pub stem: FileStem,
+    pub extension: FileExtension,
+}
 
-    // Get file stem and extension
-    let stem = FileStem(get_file_stem(&path).to_lowercase());
-    let extension = FileExtension(get_extension_from_filename(&path));
+impl From<String> for FileReference {
+    fn from(value: String) -> Self {
+        // Determine location based on path prefix
+        let location = if value.starts_with("s3://") {
+            Location::S3
+        } else {
+            Location::Local
+        };
 
-    // Determine file type based on extension
-    let file_type = match extension.0.to_lowercase().as_str() {
-        // Image formats
-        "png" | "jpg" | "jpeg" | "gif" | "webp" => Type::Image,
+        // Get file stem and extension
+        let stem = FileStem(get_file_stem(&value).to_lowercase());
+        let extension = FileExtension(get_extension_from_filename(&value));
 
-        // Video formats
-        "mp4" | "mov" | "webm" | "mpeg" | "mpg" | "m4v" | "avi" => Type::Video,
+        // Determine file type based on extension
+        let file_type = match extension.0.to_lowercase().as_str() {
+            // Image formats
+            "png" | "jpg" | "jpeg" | "gif" | "webp" => Type::Image,
 
-        // Document formats
-        "csv" | "doc" | "docx" | "html" | "md" | "pdf" | "txt" | "xls" | "xlsx" => Type::Document,
+            // Video formats
+            "mp4" | "mov" | "webm" | "mpeg" | "mpg" | "m4v" | "avi" => Type::Video,
 
-        _ => panic!("Unsupported file type {}", path),
-    };
+            // Document formats
+            "csv" | "doc" | "docx" | "html" | "md" | "pdf" | "txt" | "xls" | "xlsx" => {
+                Type::Document
+            }
 
-    (file_type, location, stem, extension)
+            _ => panic!("Unsupported file type {}", value),
+        };
+
+        FileReference {
+            file_type,
+            location,
+            path: value,
+            stem,
+            extension,
+        }
+    }
 }
 
 #[test]
