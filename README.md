@@ -1,4 +1,4 @@
-# bedrock_lib
+# bedrock-lib
 * Rust struct data model for `bedrock::InvokeModel` Amazon Nova text and Canvas models, including image/video input.
 * Rust struct data models for `bedrock::Converse` with support for image, video, and docuemnt input, and basic support for tool usage.
 * CLI references using the libraries (no tool usage)
