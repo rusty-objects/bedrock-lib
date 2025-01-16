@@ -2,19 +2,12 @@ use aws_sdk_bedrockruntime::operation::RequestId;
 use json::{CanvasRequest, CanvasResponse, TextToImageParams};
 use log::debug;
 
-use crate::TraceId;
+use crate::{file::Base64Encoding, TraceId};
 
 pub mod json;
 
 static MODEL_ID: &str = "amazon.nova-canvas-v1:0";
 
-/// Wrapper around an RFC4648 Base64 encoded String, accessible via as_ref().
-pub struct Base64Encoding(String);
-impl AsRef<str> for Base64Encoding {
-    fn as_ref(&self) -> &str {
-        self.0.as_str()
-    }
-}
 pub async fn text_to_image(
     client: &aws_sdk_bedrockruntime::Client,
     prompt: String,
@@ -64,7 +57,10 @@ pub async fn text_to_image(
 
             (
                 trace_id,
-                rsp.images.into_iter().map(|s| Base64Encoding(s)).collect(),
+                rsp.images
+                    .into_iter()
+                    .map(|s| Base64Encoding::new(s))
+                    .collect(),
             )
         }
         Err(result) => panic!("InvokeModelError:\n{:#?}", result),

@@ -4,6 +4,26 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
+/// Wrapper around an RFC4648 Base64 encoded String, accessible via as_ref().
+pub struct Base64Encoding(String);
+impl Base64Encoding {
+    pub fn new(input: String) -> Self {
+        Self(input)
+    }
+
+    pub fn encode(data: Vec<u8>) -> Self {
+        Self(BASE64_STANDARD.encode(data))
+    }
+
+    fn decode(self) -> Vec<u8> {
+        BASE64_STANDARD.decode(self.0).unwrap()
+    }
+
+    pub fn unwrap(self) -> String {
+        self.0
+    }
+}
+
 /// Gets the file extension for the specified path.
 ///
 /// Filenames support ~ and env variables.
@@ -37,10 +57,10 @@ pub fn expand(filename: &str) -> String {
 /// Reads the contents of the specified file into an RFC4648 base64 encoded string
 ///
 /// Filenames support ~ and env variables
-pub fn read_base64(filename: &str) -> String {
+pub fn read_base64(filename: &str) -> Base64Encoding {
     let expanded = expand(filename);
     let contents = fs::read(Path::new(expanded.as_str())).unwrap();
-    BASE64_STANDARD.encode(contents)
+    Base64Encoding::encode(contents)
 }
 
 /// Reads the contents of the specified file into an RFC4648 base64 encoded string
@@ -55,9 +75,9 @@ pub fn read(filename: &str) -> Vec<u8> {
 /// specified file.
 ///
 /// Filenames support ~ and env variables
-pub fn write_base64(filename: &str, contents: String) {
+pub fn write_base64(filename: &str, contents: Base64Encoding) {
     let expanded = expand(filename);
-    let decoded = BASE64_STANDARD.decode(contents).unwrap();
+    let decoded = contents.decode();
     let _ = fs::write(Path::new(expanded.as_str()), decoded).unwrap();
 }
 

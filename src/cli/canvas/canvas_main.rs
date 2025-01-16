@@ -85,7 +85,7 @@ async fn main() {
             println!("Writing:")
         }
         let path = format!("{}/{}-{}.png", outdir, trace_id, idx);
-        rusty_bedrock_lib::file::write_base64(path.as_str(), image.as_ref().to_string());
+        rusty_bedrock_lib::file::write_base64(path.as_str(), image);
         println!("{}", path);
     }
 }

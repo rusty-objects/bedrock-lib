@@ -34,14 +34,16 @@ pub async fn invoke_model(
                 let base64 = file::read_base64(&attachment.path);
                 user_content.push(json::Content::Image(json::Image {
                     format: attachment.extension.0,
-                    source: json::ImageSource { bytes: base64 },
+                    source: json::ImageSource {
+                        bytes: base64.unwrap(),
+                    },
                 }));
             }
             (file::Type::Video, file::Location::Local) => {
                 let base64 = file::read_base64(&attachment.path);
                 user_content.push(json::Content::Video(json::Video {
                     format: attachment.extension.0,
-                    source: json::VideoSource::Bytes(base64),
+                    source: json::VideoSource::Bytes(base64.unwrap()),
                 }));
             }
             (file::Type::Video, file::Location::S3) => {
