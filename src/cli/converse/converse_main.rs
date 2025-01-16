@@ -209,7 +209,7 @@ async fn say(
                     warn!("-- guardrail --")
                 }
                 ContentBlock::Image(_image_block) => warn!("-- image --"),
-                ContentBlock::Text(s) => warn!("{}", s),
+                ContentBlock::Text(s) => println!("{}", s),
                 ContentBlock::ToolResult(_tool_result_block) => warn!("-- tool result --"),
                 ContentBlock::ToolUse(_tool_use_block) => warn!("-- tool use --"),
                 ContentBlock::Video(_video_block) => warn!("-- video --"),
