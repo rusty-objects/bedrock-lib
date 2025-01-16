@@ -59,7 +59,7 @@ pub async fn text_to_image(
                 trace_id,
                 rsp.images
                     .into_iter()
-                    .map(|s| Base64Encoding::new(s))
+                    .map(Base64Encoding::new)
                     .collect(),
             )
         }

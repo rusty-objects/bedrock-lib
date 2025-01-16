@@ -78,7 +78,7 @@ pub fn read(filename: &str) -> Vec<u8> {
 pub fn write_base64(filename: &str, contents: Base64Encoding) {
     let expanded = expand(filename);
     let decoded = contents.decode();
-    let _ = fs::write(Path::new(expanded.as_str()), decoded).unwrap();
+    fs::write(Path::new(expanded.as_str()), decoded).unwrap();
 }
 
 /// Writes the supplied utf-8 string to the specified file

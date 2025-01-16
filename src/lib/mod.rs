@@ -112,12 +112,12 @@ pub async fn list_models(
         let arn = model.model_arn().to_owned();
         let input = model
             .input_modalities()
-            .into_iter()
+            .iter()
             .map(|m| m.to_string())
             .collect();
         let output = model
             .output_modalities()
-            .into_iter()
+            .iter()
             .map(|m| m.to_string())
             .collect();
         let details = ModelDetails {
@@ -134,16 +134,13 @@ pub async fn list_models(
     for profile in profiles {
         let profile_id = profile.inference_profile_id().to_owned();
         for model in profile.models() {
-            model_map
-                .get_mut(model.model_arn().unwrap())
-                .map(|model_details| model_details.inference_profiles.push(profile_id.clone()));
+            if let Some(model_details) = model_map
+                .get_mut(model.model_arn().unwrap()) { model_details.inference_profiles.push(profile_id.clone()) }
         }
     }
 
     let mut vec = model_map
-        .values()
-        .into_iter()
-        .map(|d| d.clone())
+        .values().cloned()
         .collect::<Vec<_>>();
     vec.sort_by_key(|a| format!("{}{}", a.provider, a.name).to_string());
     vec

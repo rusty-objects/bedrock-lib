@@ -35,7 +35,7 @@ impl TryFrom<AttachmentPath> for ContentBlock {
                     .source(img_src)
                     .build()
                     .unwrap();
-                return Ok(ContentBlock::Image(img_block));
+                Ok(ContentBlock::Image(img_block))
             }
             (crate::file::Type::Video, crate::file::Location::Local) => {
                 let format = video_fmt(&file_ref.extension.0);
@@ -52,7 +52,7 @@ impl TryFrom<AttachmentPath> for ContentBlock {
                     .source(vid_src)
                     .build()
                     .unwrap();
-                return Ok(ContentBlock::Video(vid_block));
+                Ok(ContentBlock::Video(vid_block))
             }
             (crate::file::Type::Video, crate::file::Location::S3) => {
                 let format = video_fmt(&file_ref.extension.0);
@@ -72,7 +72,7 @@ impl TryFrom<AttachmentPath> for ContentBlock {
                     .source(vid_src)
                     .build()
                     .unwrap();
-                return Ok(ContentBlock::Video(vid_block));
+                Ok(ContentBlock::Video(vid_block))
             }
             (crate::file::Type::Document, crate::file::Location::Local) => {
                 let format = doc_fmt(&file_ref.extension.0);
@@ -90,10 +90,10 @@ impl TryFrom<AttachmentPath> for ContentBlock {
                     .name(file_ref.stem.0)
                     .build()
                     .unwrap();
-                return Ok(ContentBlock::Document(doc_block));
+                Ok(ContentBlock::Document(doc_block))
             }
             _ => {
-                return Err(InvalidPath(file_ref.path));
+                Err(InvalidPath(file_ref.path))
             }
         }
     }
@@ -101,7 +101,7 @@ impl TryFrom<AttachmentPath> for ContentBlock {
 
 // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.VideoFormat.html
 fn video_fmt(format: &str) -> Option<VideoFormat> {
-    return match format {
+    match format {
         "flv" => Some(VideoFormat::Flv),
         "mkv" => Some(VideoFormat::Mkv),
         "mov" => Some(VideoFormat::Mov),
@@ -112,23 +112,23 @@ fn video_fmt(format: &str) -> Option<VideoFormat> {
         "webm" => Some(VideoFormat::Webm),
         "wmv" => Some(VideoFormat::Wmv),
         _ => None,
-    };
+    }
 }
 
 // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.ImageFormat.html
 fn image_fmt(format: &str) -> Option<ImageFormat> {
-    return match format.to_lowercase().as_str() {
+    match format.to_lowercase().as_str() {
         "gif" => Some(ImageFormat::Gif),
         "jpeg" | "jpg" => Some(ImageFormat::Jpeg),
         "png" => Some(ImageFormat::Png),
         "webp" => Some(ImageFormat::Webp),
         _ => None,
-    };
+    }
 }
 
 // https://docs.rs/aws-sdk-bedrockruntime/latest/aws_sdk_bedrockruntime/types/enum.DocumentFormat.html
 fn doc_fmt(format: &str) -> Option<DocumentFormat> {
-    return match format.to_lowercase().as_str() {
+    match format.to_lowercase().as_str() {
         "csv" => Some(DocumentFormat::Csv),
         "doc" => Some(DocumentFormat::Doc),
         "docx" => Some(DocumentFormat::Docx),
@@ -139,5 +139,5 @@ fn doc_fmt(format: &str) -> Option<DocumentFormat> {
         "xls" => Some(DocumentFormat::Xls),
         "xlsx" => Some(DocumentFormat::Xlsx),
         _ => None,
-    };
+    }
 }

@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         messages: vec![],
     };
 
-    println!("");
+    println!();
     // Define a shell
     let mut shell = Shell::new_with_async_handler(
         state,
